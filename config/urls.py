@@ -1,5 +1,5 @@
-from django.urls import path
+from django.urls import path, include
 
 urlpatterns = [
-    # API endpoints to be added once the fuel router app is initialized
+    path('api/v1/', include('fuel_router.urls')),
 ]
