@@ -2,6 +2,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from fuel_router.services.spatial import spatial_index
 from fuel_router.services.routing import geocode, get_route_polyline
+from fuel_router.services.optimizer import optimize_fuel_stops, UnreachableRouteError
 
 
 class HealthCheckEndpointTest(APITestCase):
@@ -55,3 +56,47 @@ class RoutingServiceTest(APITestCase):
         self.assertGreater(len(route_data["coordinates"]), 10)
         self.assertGreater(route_data["distance_miles"], 130)
         self.assertLess(route_data["distance_miles"], 200)
+
+
+class FuelOptimizerTest(APITestCase):
+    def test_short_route_requires_zero_stops(self):
+        "Trips under 500 miles require zero stops and zero additional fuel expenditure."
+        austin = [-97.7431, 30.2672]
+        houston = [-95.3698, 29.7604]
+
+        route_data = get_route_polyline(austin, houston)
+        result = optimize_fuel_stops(route_data["coordinates"], route_data["distance_miles"])
+
+        self.assertEqual(result["total_stops"], 0)
+        self.assertEqual(result["total_fuel_cost"], 0.0)
+        self.assertEqual(result["total_gallons"], 0.0)
+        self.assertEqual(len(result["stops"]), 0)
+
+    def test_long_route_refueling_optimization(self):
+        "Long routes calculate valid fuel stops respecting range and pricing."
+        dallas = [-96.7970, 32.7767]
+        atlanta = [-84.3880, 33.7490]
+
+        route_data = get_route_polyline(dallas, atlanta)
+        result = optimize_fuel_stops(route_data["coordinates"], route_data["distance_miles"])
+
+        self.assertGreater(result["total_stops"], 0)
+        self.assertGreater(result["total_fuel_cost"], 0.0)
+        self.assertGreater(result["total_gallons"], 0.0)
+
+        prev_mile = 0.0
+        for stop in result["stops"]:
+            self.assertIn("name", stop)
+            self.assertIn("price", stop)
+            self.assertIn("gallons_bought", stop)
+            self.assertGreater(stop["gallons_bought"], 0.0)
+            self.assertLessEqual(stop["mile_marker"] - prev_mile, 500.0)
+            prev_mile = stop["mile_marker"]
+
+        self.assertLessEqual(route_data["distance_miles"] - prev_mile, 500.0)
+
+    def test_unreachable_route_raises_exception(self):
+        "Routes through areas without accessible stations raise an UnreachableRouteError."
+        empty_ocean_coords = [[-65.0, 25.0], [-66.0, 26.0]]
+        with self.assertRaises(UnreachableRouteError):
+            optimize_fuel_stops(empty_ocean_coords, total_distance_miles=800.0)
