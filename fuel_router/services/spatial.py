@@ -46,6 +46,7 @@ class SpatialIndex:
     def __init__(self):
         self.tree = None
         self.stations = []
+        self.cities_map = {}
         self._is_loaded = False
 
     @property
@@ -118,6 +119,7 @@ class SpatialIndex:
         if station_coords:
             self.tree = KDTree(station_coords)
             self.stations = matched_stations
+            self.cities_map = cities_map
             self._is_loaded = True
             logger.info(f"SpatialIndex loaded {len(self.stations)} fuel stations.")
 

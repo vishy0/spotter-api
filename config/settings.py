@@ -88,3 +88,13 @@ CACHES = {
         'LOCATION': 'fuel-route-cache',
     }
 }
+
+# Routing & Optimization Configurations
+ROUTING_SERVICE_URL = os.getenv("ROUTING_SERVICE_URL", "https://router.project-osrm.org")
+GEOCODING_SERVICE_URL = os.getenv("GEOCODING_SERVICE_URL", "https://nominatim.openstreetmap.org/search")
+GEOCODING_USER_AGENT = os.getenv("GEOCODING_USER_AGENT", "FuelRouterApp/1.0 (contact: admin@fuelrouter.local)")
+
+VEHICLE_MAX_RANGE_MILES = 500.0
+VEHICLE_MPG = 10.0
+METERS_TO_MILES = 0.000621371
+

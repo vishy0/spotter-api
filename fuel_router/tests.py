@@ -1,6 +1,7 @@
 from rest_framework.test import APITestCase
 from rest_framework import status
 from fuel_router.services.spatial import spatial_index
+from fuel_router.services.routing import geocode, get_route_polyline
 
 
 class HealthCheckEndpointTest(APITestCase):
@@ -23,9 +24,7 @@ class SpatialIndexTest(APITestCase):
         dallas_lon = -96.7970
         nearby_stations = spatial_index.query_radius(dallas_lat, dallas_lon, radius_miles=50.0)
 
-        self.assertGreater(len(nearby_stations), 0, "Expected at least one station within 50 miles of Dallas")
-
-        # Validate station fields
+        self.assertGreater(len(nearby_stations), 0, "Expected stations within 50 miles of Dallas")
         first_station = nearby_stations[0]
         self.assertIn("name", first_station)
         self.assertIn("price", first_station)
@@ -33,3 +32,26 @@ class SpatialIndexTest(APITestCase):
         self.assertIn("lon", first_station)
         self.assertIn("distance_miles", first_station)
         self.assertLessEqual(first_station["distance_miles"], 50.0)
+
+
+class RoutingServiceTest(APITestCase):
+    def test_geocode_los_angeles(self):
+        "Ensure geocoding resolves city coordinates accurately."
+        coords = geocode("Los Angeles, CA")
+        self.assertEqual(len(coords), 2)
+        lon, lat = coords
+        
+        # Approximate Longitude around -118.24, Latitude around 34.05
+        self.assertAlmostEqual(lon, -118.24, delta=0.1)
+        self.assertAlmostEqual(lat, 34.05, delta=0.1)
+
+    def test_get_route_polyline_austin_to_houston(self):
+        "Ensure route polyline and distance calculation between Austin and Houston."
+        austin = [-97.7431, 30.2672]
+        houston = [-95.3698, 29.7604]
+
+        route_data = get_route_polyline(austin, houston)
+        self.assertEqual(route_data["type"], "LineString")
+        self.assertGreater(len(route_data["coordinates"]), 10)
+        self.assertGreater(route_data["distance_miles"], 130)
+        self.assertLess(route_data["distance_miles"], 200)
