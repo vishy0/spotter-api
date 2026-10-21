@@ -127,12 +127,15 @@ class SpatialIndex:
 
     def query_radius(self, lat: float, lon: float, radius_miles: float) -> list[dict]:
         """
-        Query stations within radius_miles of (lat, lon).
+        Two-stage spatial query:
+        1. Query in-memory KDTree using conservative bounding radius in degrees
+           (divisor 45.0 covers contiguous US latitudes up to 49°N).
+        2. Filter candidate stations using exact spherical Haversine distance.
         """
         if not self._is_loaded or self.tree is None:
             return []
 
-        deg_radius = radius_miles / 50.0
+        deg_radius = radius_miles / 45.0
         candidate_indices = self.tree.query_ball_point([lat, lon], r=deg_radius)
 
         results = []

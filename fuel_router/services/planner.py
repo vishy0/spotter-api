@@ -3,9 +3,11 @@ from fuel_router.services.routing import geocode, get_route_polyline
 from fuel_router.services.optimizer import optimize_fuel_stops, UnreachableRouteError
 
 
-def get_trip_cache_key(start: str, finish: str) -> str:
-    """Generates a deterministic cache key for a given start and destination pair."""
-    token = f"{start.strip().lower()}:{finish.strip().lower()}"
+def get_trip_cache_key(
+    start: str, finish: str, max_range: float = 500.0, mpg: float = 10.0
+) -> str:
+    """Generates a deterministic cache key incorporating route endpoints and vehicle parameters."""
+    token = f"{start.strip().lower()}:{finish.strip().lower()}:{round(float(max_range), 1)}:{round(float(mpg), 1)}"
     return "trip_route_" + hashlib.md5(token.encode("utf-8")).hexdigest()
 
 

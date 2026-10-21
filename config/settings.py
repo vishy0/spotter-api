@@ -88,11 +88,17 @@ CACHES = {
         'LOCATION': 'fuel-route-cache',
     }
 }
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))
 
 # Routing & Optimization Configurations
 ROUTING_SERVICE_URL = os.getenv("ROUTING_SERVICE_URL", "https://router.project-osrm.org")
 GEOCODING_SERVICE_URL = os.getenv("GEOCODING_SERVICE_URL", "https://nominatim.openstreetmap.org/search")
 GEOCODING_USER_AGENT = os.getenv("GEOCODING_USER_AGENT", "FuelRouterApp/1.0 (contact: admin@fuelrouter.local)")
+
+ROUTING_TIMEOUT_SECONDS = int(os.getenv("ROUTING_TIMEOUT_SECONDS", "10"))
+GEOCODING_TIMEOUT_SECONDS = int(os.getenv("GEOCODING_TIMEOUT_SECONDS", "5"))
+ROUTE_SAMPLING_STEP_MILES = float(os.getenv("ROUTE_SAMPLING_STEP_MILES", "35.0"))
+ROUTE_SEARCH_RADIUS_MILES = float(os.getenv("ROUTE_SEARCH_RADIUS_MILES", "15.0"))
 
 VEHICLE_MAX_RANGE_MILES = 500.0
 VEHICLE_MPG = 10.0

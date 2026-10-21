@@ -1,4 +1,5 @@
 from django.conf import settings
+from scipy.spatial import KDTree
 from fuel_router.services.spatial import spatial_index, haversine_distance_miles
 
 
@@ -32,8 +33,8 @@ def _calculate_cumulative_distances(coords: list[list[float]], total_distance_mi
 def find_stations_along_route(
     coords: list[list[float]],
     total_distance_miles: float,
-    sampling_step_miles: float = 35.0,
-    search_radius_miles: float = 15.0,
+    sampling_step_miles: float = None,
+    search_radius_miles: float = None,
 ) -> list[dict]:
     """
     Samples points along the driving polyline, finds nearby fuel stations from the spatial index,
@@ -41,6 +42,11 @@ def find_stations_along_route(
     """
     if not coords or not spatial_index.is_loaded:
         return []
+
+    if sampling_step_miles is None:
+        sampling_step_miles = float(getattr(settings, "ROUTE_SAMPLING_STEP_MILES", 35.0))
+    if search_radius_miles is None:
+        search_radius_miles = float(getattr(settings, "ROUTE_SEARCH_RADIUS_MILES", 15.0))
 
     cum_distances = _calculate_cumulative_distances(coords, total_distance_miles)
     candidate_stations = {}
@@ -67,18 +73,29 @@ def find_stations_along_route(
         return []
 
     # Project each station to its closest route coordinate to establish a 1D mile marker
+    # We use a KDTree on the route coordinates for O(K log M) ultra-fast projection
+    route_coords_lat_lon = [(pt[1], pt[0]) for pt in coords]
+    route_tree = KDTree(route_coords_lat_lon)
+
     projected = []
+    k_neighbors = min(3, len(coords))
+
     for st in candidate_stations.values():
         s_lat, s_lon = st["lat"], st["lon"]
+
+        _, candidate_indices = route_tree.query([s_lat, s_lon], k=k_neighbors)
+        if not hasattr(candidate_indices, "__iter__"):
+            candidate_indices = [candidate_indices]
 
         closest_dist = float("inf")
         best_mile = 0.0
 
-        for i, pt in enumerate(coords):
+        for idx in candidate_indices:
+            pt = coords[idx]
             d = haversine_distance_miles(s_lat, s_lon, pt[1], pt[0])
             if d < closest_dist:
                 closest_dist = d
-                best_mile = cum_distances[i]
+                best_mile = cum_distances[idx]
 
         # Station should be reasonably close to the highway
         if closest_dist <= search_radius_miles:
